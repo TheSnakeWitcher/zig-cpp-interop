@@ -1,43 +1,31 @@
 const std = @import("std");
+const c = @cImport({
 
-extern fn say_hi() void;
+    @cInclude("stdio.h");
+
+    // import definitions for ../cpp-src/wrapper.h
+    // we can use this notation thanks to `exe.addIncludePath(cpath)` 
+    // see build.zig:19
+    @cInclude("wrapper.h");
+});
+
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    std.debug.print("Hello from zig main.\n", .{});
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    _ = c.printf("print using stdio\n"); // using `printf()` from `stdio` imported with `@cImport`
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    c.say_hi(); // using `say_hi()` from @cImport
 
-    try bw.flush(); // don't forget to flush!
-
-    say_hi();
+    say_hi(); // using extern declaration directly
 }
 
-// This function is not called from Zig, but it's instead exported and called from C++.
-export fn hello_from_zig() callconv(.C) void {
-    // print to std out
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+// This function is provided by c++ 
+// It is defined here so can be used directly from zig
+// See ../cpp-src/wrapper.h
+extern fn say_hi() void;
 
-    stdout.print("Hello from Zig!\n", .{}) catch |err| {
-        std.debug.print("unable to write to stdout: {}\n", .{err});
-    };
-    bw.flush() catch |err| {
-        std.debug.print("unable to flush stdout: {}\n", .{err});
-    };
-}
-
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+// This function is not called from Zig, but it's instead exported and called from C++
+export fn hello_from_zig() void {
+    std.debug.print("Hello from zig hello_from_zig().\n", .{});
 }
